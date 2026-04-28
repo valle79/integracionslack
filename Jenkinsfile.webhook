@@ -1,0 +1,250 @@
+// JENKINSFILE ALTERNATIVO - USANDO WEBHOOK
+// Este archivo usa el webhook directamente sin necesidad del plugin de Slack
+// Más simple pero con menos funcionalidades
+
+pipeline {
+    agent any
+    
+    environment {
+        PROJECT_NAME = 'Jenkins-Slack Integration Demo'
+        SLACK_WEBHOOK = credentials('slack-webhook-url') // ID de la credencial en Jenkins
+        MAVEN_HOME = tool 'Maven'
+        JAVA_HOME = tool 'JDK17'
+    }
+    
+    stages {
+        stage('📢 Inicio') {
+            steps {
+                script {
+                    def startTime = new Date().format('dd/MM/yyyy HH:mm:ss')
+                    def message = """
+{
+    "text": "🚀 *INICIO DE BUILD*",
+    "blocks": [
+        {
+            "type": "header",
+            "text": {
+                "type": "plain_text",
+                "text": "🚀 INICIO DE BUILD"
+            }
+        },
+        {
+            "type": "section",
+            "fields": [
+                {
+                    "type": "mrkdwn",
+                    "text": "*Proyecto:*\\n${PROJECT_NAME}"
+                },
+                {
+                    "type": "mrkdwn",
+                    "text": "*Build:*\\n#${BUILD_NUMBER}"
+                },
+                {
+                    "type": "mrkdwn",
+                    "text": "*Hora:*\\n${startTime}"
+                },
+                {
+                    "type": "mrkdwn",
+                    "text": "*Branch:*\\nmain"
+                }
+            ]
+        }
+    ]
+}
+                    """.trim()
+                    
+                    // Enviar a Slack usando curl
+                    sh """
+                        curl -X POST -H 'Content-type: application/json' \
+                        --data '${message}' \
+                        ${SLACK_WEBHOOK}
+                    """
+                }
+            }
+        }
+        
+        stage('🧹 Limpieza') {
+            steps {
+                echo '🧹 Limpiando workspace...'
+                bat 'mvn clean'
+            }
+        }
+        
+        stage('🔨 Compilación') {
+            steps {
+                echo '🔨 Compilando el proyecto...'
+                bat 'mvn compile'
+            }
+        }
+        
+        stage('🧪 Pruebas Unitarias') {
+            steps {
+                echo '🧪 Ejecutando pruebas unitarias...'
+                bat 'mvn test'
+            }
+            post {
+                always {
+                    junit '**/target/surefire-reports/*.xml'
+                }
+            }
+        }
+        
+        stage('📦 Empaquetado') {
+            steps {
+                echo '📦 Empaquetando aplicación...'
+                bat 'mvn package -DskipTests'
+            }
+        }
+        
+        stage('📊 Análisis de Calidad') {
+            steps {
+                echo '📊 Verificando calidad del código...'
+                bat 'mvn verify -DskipTests'
+            }
+        }
+    }
+    
+    post {
+        success {
+            script {
+                def duration = currentBuild.durationString.replace(' and counting', '')
+                def endTime = new Date().format('dd/MM/yyyy HH:mm:ss')
+                def message = """
+{
+    "text": "✅ *BUILD EXITOSO*",
+    "blocks": [
+        {
+            "type": "header",
+            "text": {
+                "type": "plain_text",
+                "text": "✅ BUILD EXITOSO"
+            }
+        },
+        {
+            "type": "section",
+            "fields": [
+                {
+                    "type": "mrkdwn",
+                    "text": "*Proyecto:*\\n${PROJECT_NAME}"
+                },
+                {
+                    "type": "mrkdwn",
+                    "text": "*Build:*\\n#${BUILD_NUMBER}"
+                },
+                {
+                    "type": "mrkdwn",
+                    "text": "*Duración:*\\n${duration}"
+                },
+                {
+                    "type": "mrkdwn",
+                    "text": "*Finalizado:*\\n${endTime}"
+                }
+            ]
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": "🎉 ¡Todos los tests pasaron correctamente!"
+            }
+        },
+        {
+            "type": "actions",
+            "elements": [
+                {
+                    "type": "button",
+                    "text": {
+                        "type": "plain_text",
+                        "text": "Ver Detalles"
+                    },
+                    "url": "${BUILD_URL}"
+                }
+            ]
+        }
+    ]
+}
+                """.trim()
+                
+                sh """
+                    curl -X POST -H 'Content-type: application/json' \
+                    --data '${message}' \
+                    ${SLACK_WEBHOOK}
+                """
+            }
+        }
+        
+        failure {
+            script {
+                def duration = currentBuild.durationString.replace(' and counting', '')
+                def endTime = new Date().format('dd/MM/yyyy HH:mm:ss')
+                def message = """
+{
+    "text": "❌ *BUILD FALLIDO*",
+    "blocks": [
+        {
+            "type": "header",
+            "text": {
+                "type": "plain_text",
+                "text": "❌ BUILD FALLIDO"
+            }
+        },
+        {
+            "type": "section",
+            "fields": [
+                {
+                    "type": "mrkdwn",
+                    "text": "*Proyecto:*\\n${PROJECT_NAME}"
+                },
+                {
+                    "type": "mrkdwn",
+                    "text": "*Build:*\\n#${BUILD_NUMBER}"
+                },
+                {
+                    "type": "mrkdwn",
+                    "text": "*Duración:*\\n${duration}"
+                },
+                {
+                    "type": "mrkdwn",
+                    "text": "*Finalizado:*\\n${endTime}"
+                }
+            ]
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": "⚠️ Por favor, revisa los logs para más detalles."
+            }
+        },
+        {
+            "type": "actions",
+            "elements": [
+                {
+                    "type": "button",
+                    "text": {
+                        "type": "plain_text",
+                        "text": "Ver Console Output"
+                    },
+                    "url": "${BUILD_URL}console",
+                    "style": "danger"
+                }
+            ]
+        }
+    ]
+}
+                """.trim()
+                
+                sh """
+                    curl -X POST -H 'Content-type: application/json' \
+                    --data '${message}' \
+                    ${SLACK_WEBHOOK}
+                """
+            }
+        }
+        
+        always {
+            echo '🧹 Limpiando recursos temporales...'
+            cleanWs()
+        }
+    }
+}
