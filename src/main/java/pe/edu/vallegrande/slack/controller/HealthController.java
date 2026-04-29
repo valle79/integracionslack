@@ -13,6 +13,15 @@ import java.util.Map;
 @RequestMapping("/api")
 public class HealthController {
 
+    @GetMapping("/")
+    public ResponseEntity<Map<String, String>> root() {
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Bienvenido a Jenkins-Slack Integration");
+        response.put("version", "1.0.0");
+        response.put("endpoints", "GET /api/health, GET /api/info, GET /api/messages, POST /api/messages");
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/health")
     public ResponseEntity<Map<String, Object>> health() {
         Map<String, Object> response = new HashMap<>();

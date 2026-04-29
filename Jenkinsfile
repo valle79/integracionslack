@@ -32,22 +32,22 @@ pipeline {
         
         stage('🧹 Limpieza') {
             steps {
-                echo '🧹 Limpiando workspace...'
-                bat 'mvn clean'
+                echo '🧹 Limpiando proyecto...'
+                bat "${MAVEN_HOME}\\bin\\mvn clean"
             }
         }
         
         stage('🔨 Compilación') {
             steps {
                 echo '🔨 Compilando el proyecto...'
-                bat 'mvn compile'
+                bat "${MAVEN_HOME}\\bin\\mvn compile"
             }
         }
         
         stage('🧪 Pruebas Unitarias') {
             steps {
                 echo '🧪 Ejecutando pruebas unitarias...'
-                bat 'mvn test'
+                bat "${MAVEN_HOME}\\bin\\mvn test"
             }
             post {
                 always {
@@ -59,14 +59,14 @@ pipeline {
         stage('📦 Empaquetado') {
             steps {
                 echo '📦 Empaquetando aplicación...'
-                bat 'mvn package -DskipTests'
+                bat "${MAVEN_HOME}\\bin\\mvn package -DskipTests"
             }
         }
         
         stage('📊 Análisis de Calidad') {
             steps {
                 echo '📊 Verificando calidad del código...'
-                bat 'mvn verify -DskipTests'
+                bat "${MAVEN_HOME}\\bin\\mvn verify -DskipTests"
             }
         }
     }
@@ -134,11 +134,6 @@ pipeline {
 ⚠️ Algunos tests fallaron o hay warnings.
                 """.stripIndent()
             )
-        }
-        
-        always {
-            echo '🧹 Limpiando recursos temporales...'
-            cleanWs()
         }
     }
 }
